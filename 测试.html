@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>计算机发展史测验</title>
+    <title>阿瑞制作</title>
     <style>
         * {
             box-sizing: border-box;
@@ -31,7 +31,7 @@
             transition: transform 0.3s ease;
         }
 
-        .start-page, .quiz-page, .result-page, .wrong-page {
+        .start-page, .quiz-page, .result-page, .wrong-page, .prize-page {
             display: none;
         }
 
@@ -51,6 +51,38 @@
             font-size: 16px;
             margin-bottom: 30px;
             line-height: 1.6;
+        }
+
+        /* 题目导航条 */
+        .question-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .nav-item {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .nav-item.current {
+            background: #764ba2;
+            color: #fff;
+        }
+        .nav-item.answered {
+            background: #4caf50;
+            color: #fff;
+        }
+        .nav-item.wrong {
+            background: #f44336;
+            color: #fff;
         }
 
         .progress {
@@ -132,11 +164,11 @@
             background: linear-gradient(to right, #5a6edb, #6c3d8d);
         }
 
-        .result-page, .wrong-page {
+        .result-page, .wrong-page, .prize-page {
             text-align: center;
         }
 
-        .result-page h2, .wrong-page h2 {
+        .result-page h2, .wrong-page h2, .prize-page h2 {
             font-size: 26px;
             color: #333;
             margin-bottom: 20px;
@@ -162,6 +194,12 @@
             background: #fff;
             border-radius: 8px;
         }
+        /* 视频样式适配 */
+        video {
+            width: 100%;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -169,15 +207,18 @@
 <div class="container">
     <!-- 开始界面 -->
     <div class="start-page" id="startPage">
-        <h1>计算机发展四代知识测验</h1>
-        <p>阿瑞制作<br>没啥难度</p>
+        <h1>计算机发展四代知识</h1>
+        <p>阿瑞制作 · 没啥难度<br>支持云更新<br>全部正确，有神秘大奖</p>
         <button class="btn" onclick="startQuiz()">开始答题</button>
     </div>
 
     <!-- 答题界面 -->
     <div class="quiz-page" id="quizPage">
+        <!-- 题目导航条 -->
+        <div class="question-nav" id="questionNav"></div>
+
         <div class="progress">
-            <span>第 <span id="currentNum">1</span> 题</span>
+            <span>第 <span id="currentNum">1</span> 题 / 共 <span id="totalNum">11</span> 题</span>
             <span>得分：<span id="score">0</span></span>
         </div>
         <div class="question">
@@ -197,6 +238,10 @@
             <p>答错：<span id="wrong" style="color:red">0</span></p>
             <p>得分：<span id="finalScore" style="font-size:22px">0</span></p>
         </div>
+
+        <!-- 全对才显示 -->
+        <button class="btn" id="allRightBtn" style="background: linear-gradient(to right, #ff512f, #dd2476); display: none;" onclick="goToPrize()">进入神秘大奖</button>
+
         <button class="btn" onclick="showWrong()">查看错题</button>
         <button class="btn" onclick="restartQuiz()">重新答题</button>
     </div>
@@ -206,6 +251,18 @@
         <h2>错题列表</h2>
         <div class="wrong-box" id="wrongList"></div>
         <button class="btn" onclick="backToResult()">返回结果</button>
+    </div>
+
+    <!-- 大奖页面（已嵌入视频） -->
+    <div class="prize-page" id="prizePage">
+        <h2>🎉 恭喜获得神秘大奖 🎉</h2>
+        <div style="margin: 30px 0;">
+            <video controls width="100%">
+                <source src="https://pan.axxpan.top/api/v3/file/get/75518/VID_20260311_203705.mp4?sign=Q4C-MScyMLt0aBYyQmDBLgQvgsyj-33YSW8iGnxkaUw%3D%3A0" type="video/mp4">
+                你的浏览器不支持视频播放，请更换浏览器后重试
+            </video>
+        </div>
+        <button class="btn" onclick="restartQuiz()">返回首页</button>
     </div>
 </div>
 
@@ -231,6 +288,7 @@
     let wrong = 0;
     let wrongList = [];
     let shuffledQuestions = [];
+    let userAnswers = []; // 记录每道题是否答对
 
     // 随机打乱数组
     function shuffle(arr) {
@@ -244,16 +302,41 @@
 
     // 开始答题
     function startQuiz() {
-        // 1. 题目顺序随机
         shuffledQuestions = shuffle(questions);
         current = 0;
         score = 0;
         right = 0;
         wrong = 0;
         wrongList = [];
+        userAnswers = new Array(shuffledQuestions.length).fill(null);
 
         document.getElementById("startPage").style.display = "none";
         document.getElementById("quizPage").style.display = "block";
+        document.getElementById("totalNum").innerText = shuffledQuestions.length;
+        renderNav();
+        renderQuestion();
+    }
+
+    // 渲染导航条
+    function renderNav() {
+        let nav = document.getElementById("questionNav");
+        nav.innerHTML = "";
+        shuffledQuestions.forEach((_, i) => {
+            let dot = document.createElement("div");
+            dot.className = "nav-item";
+            if (i === current) dot.classList.add("current");
+            if (userAnswers[i] === true) dot.classList.add("answered");
+            if (userAnswers[i] === false) dot.classList.add("wrong");
+            dot.innerText = i + 1;
+            dot.onclick = () => jumpToQuestion(i);
+            nav.appendChild(dot);
+        });
+    }
+
+    // 跳题
+    function jumpToQuestion(index) {
+        current = index;
+        renderNav();
         renderQuestion();
     }
 
@@ -268,7 +351,6 @@
         list.innerHTML = "";
         document.getElementById("ansTip").style.display = "none";
 
-        // 2. 本题选项顺序随机
         let shuffledOptions = shuffle(q.o);
 
         shuffledOptions.forEach((item, i) => {
@@ -293,28 +375,39 @@
 
         let q = shuffledQuestions[current];
         let tip = document.getElementById("ansTip");
+        let isRight = selected.value === q.a;
 
-        if (selected.value === q.a) {
-            right++;
-            score += 10;
+        if (userAnswers[current] === null) {
+            if (isRight) {
+                right++;
+                score += 10;
+                userAnswers[current] = true;
+            } else {
+                wrong++;
+                userAnswers[current] = false;
+                wrongList.push({
+                    q: q.q,
+                    user: selected.value,
+                    ans: q.a
+                });
+            }
+        }
+
+        if (isRight) {
             tip.className = "ans-tip ans-right";
             tip.innerText = "✅ 回答正确！";
         } else {
-            wrong++;
-            wrongList.push({
-                q: q.q,
-                user: selected.value,
-                ans: q.a
-            });
             tip.className = "ans-tip ans-wrong";
             tip.innerText = "❌ 错误，正确答案：" + q.a;
         }
         tip.style.display = "block";
+        renderNav();
 
         setTimeout(() => {
             current++;
             if (current < shuffledQuestions.length) {
                 renderQuestion();
+                renderNav();
             } else {
                 showResult();
             }
@@ -328,6 +421,19 @@
         document.getElementById("right").innerText = right;
         document.getElementById("wrong").innerText = wrong;
         document.getElementById("finalScore").innerText = score;
+
+        // 全对显示大奖按钮
+        if (wrong === 0) {
+            document.getElementById("allRightBtn").style.display = "block";
+        } else {
+            document.getElementById("allRightBtn").style.display = "none";
+        }
+    }
+
+    // 进入大奖
+    function goToPrize() {
+        document.getElementById("resultPage").style.display = "none";
+        document.getElementById("prizePage").style.display = "block";
     }
 
     // 查看错题
@@ -362,6 +468,7 @@
 
     // 重新开始
     function restartQuiz() {
+        document.getElementById("prizePage").style.display = "none";
         document.getElementById("resultPage").style.display = "none";
         document.getElementById("startPage").style.display = "block";
     }
